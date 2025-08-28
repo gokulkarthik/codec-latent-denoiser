@@ -3,7 +3,9 @@ import torch
 import torch.nn as nn
 
 from datasets import load_dataset, Audio
+from lightning.pytorch.callbacks import Callback
 from torch.utils.data import DataLoader, Dataset
+from torchmetrics.audio import PerceptualEvaluationSpeechQuality
 from transformers import get_scheduler
 
 from codec_latent_denoiser import (
@@ -23,33 +25,47 @@ class CodecLatentDenoiserLightningModule(L.LightningModule):
         train_only_denoiser: bool = True,
     ) -> None:
         super().__init__()
-        self.codec_latent_denoiser = CodecLatentDenoiser(config)
-        self.loss_fn = nn.MSELoss()
+        self.config = config
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
         self.train_only_denoiser = train_only_denoiser
+        self.model = CodecLatentDenoiser(config)
+        self.loss_fn = nn.MSELoss()
+        self.pesq = PerceptualEvaluationSpeechQuality(16000, "wb")
         if self.train_only_denoiser:
-            self.codec_latent_denoiser.denoiser.train()
-            self.codec_latent_denoiser.codec.eval()
+            self.model.denoiser.train()
+            self.model.codec.eval()
+            for name, param in self.model.named_parameters():
+                if "denoiser" not in name:
+                    param.requires_grad = False
         else:
-            self.codec_latent_denoiser.train()
+            self.model.train()
 
     def forward(
         self, x: torch.Tensor, denoise: bool = True, decode: bool = False
     ) -> CodecLatentDenoiserOutput:
-        return self.codec_latent_denoiser(x, denoise, decode)
+        return self.model(x, denoise, decode)
 
     def common_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
         clean_speech = batch["input_values_clean"]
         noisy_speech = batch["input_values_noisy"]
-        clean_speech_quantized = self.codec_latent_denoiser(
+        clean_speech_quantized = self.model(
             clean_speech, denoise=False, decode=False
         ).quantized_representation
-        noisy_speech_quantized = self.codec_latent_denoiser(
+        noisy_speech_quantized = self.model(
             noisy_speech, denoise=True, decode=False
         ).quantized_representation
         loss = self.loss_fn(clean_speech_quantized, noisy_speech_quantized)
         return loss
+    
+    def predict_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
+        noisy_speech = batch["input_values_noisy"]
+        noisy_speech_denoised = self.model(
+            noisy_speech, denoise=True, decode=True
+        ).audio_generated.unsqueeze(1)
+        noisy_speech_denoised_tensor = torch.zeros_like(noisy_speech)
+        noisy_speech_denoised_tensor[:, :, :min(noisy_speech_denoised.shape[2], noisy_speech.shape[2])] = noisy_speech_denoised
+        return noisy_speech_denoised_tensor
 
     def training_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
         current_lr = self.trainer.optimizers[0].param_groups[0]["lr"]
@@ -60,19 +76,37 @@ class CodecLatentDenoiserLightningModule(L.LightningModule):
 
     def validation_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
         loss = self.common_step(batch, batch_idx)
+        preds = self.predict_step(batch, batch_idx)
+        pesq_score = self.pesq(
+            preds=preds,
+            target=batch["input_values_clean"],
+        )
         self.log("val/loss", loss, prog_bar=True, sync_dist=True)
+        self.log("val/pesq", pesq_score, prog_bar=True, sync_dist=True)
         return loss
 
     def test_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
         loss = self.common_step(batch, batch_idx)
+        preds = self.predict_step(batch, batch_idx)
+        pesq_score = self.pesq(
+            preds=preds,
+            target=batch["input_values_clean"],
+        )
         self.log("test/loss", loss, prog_bar=True, sync_dist=True)
+        self.log("test/pesq", pesq_score, prog_bar=True, sync_dist=True)
         return loss
+    
+    def on_validation_epoch_end(self) -> None:
+        self.pesq.reset()
+    
+    def on_test_epoch_end(self) -> None:
+        self.pesq.reset()
 
     def configure_optimizers(self) -> dict:
         if self.train_only_denoiser:
-            parameters = self.codec_latent_denoiser.denoiser.parameters()
+            parameters = self.model.denoiser.parameters()
         else:
-            parameters = self.codec_latent_denoiser.parameters()
+            parameters = self.model.parameters()
 
         optimizer = torch.optim.AdamW(
             parameters,
@@ -211,3 +245,33 @@ class CodecLatentDenoiserLightningDataModule(L.LightningDataModule):
             collate_fn=self.collator,
             persistent_workers=True,
         )
+
+
+class HuggingFaceHubPushCallback(Callback):
+    def __init__(
+        self,
+        repo_id: str,
+        push_every_n_epochs: int = 1,
+        processor: CodecLatentDenoiserProcessor = None,
+    ):
+        super().__init__()
+        self.repo_id = repo_id
+        self.push_every_n_epochs = push_every_n_epochs
+        self.processor = processor
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        is_final_epoch = trainer.current_epoch == trainer.max_epochs - 1
+        is_interval_epoch = (trainer.current_epoch + 1) % self.push_every_n_epochs == 0
+
+        if is_final_epoch or is_interval_epoch:
+            pl_module.model.push_to_hub(
+                repo_id=self.repo_id,
+                private=True,
+                commit_message=f"Epoch {trainer.current_epoch + 1}",
+            )
+            if self.processor:
+                self.processor.push_to_hub(
+                    repo_id=self.repo_id,
+                    private=True,
+                    commit_message="Add processor",
+                )

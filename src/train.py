@@ -1,8 +1,8 @@
-from ast import In
 import hydra
 import lightning as L
 import logging
 import sys
+import torch
 
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
@@ -17,6 +17,7 @@ from codec_latent_denoiser import (
 from lightning_utils import (
     CodecLatentDenoiserLightningDataModule,
     CodecLatentDenoiserLightningModule,
+    HuggingFaceHubPushCallback
 )
 
 
@@ -71,12 +72,12 @@ def train(training_config: DictConfig) -> None:
     )
 
     trainer = L.Trainer(
-        deterministic=True,
         enable_checkpointing=False,
         callbacks=[],
         logger=wandb_logger,
+        accumulate_grad_batches=training_config.get("accumulate_grad_batches", 1),
         max_epochs=training_config.get("max_epochs", 10),
-        precision=training_config.get("precision", "bf16-true"),
+        precision=training_config.get("precision", "bf16-mixed"),
         num_nodes=training_config.get("num_nodes", 1),
         devices=training_config.get("devices", [0]),
         limit_train_batches=training_config.get("limit_train_batches", None),
@@ -86,6 +87,13 @@ def train(training_config: DictConfig) -> None:
         val_check_interval=training_config.get("val_check_interval", 1.0),
         check_val_every_n_epoch=training_config.get("check_val_every_n_epoch", 1),
     )
+    if trainer.is_global_zero:
+        push_callback = HuggingFaceHubPushCallback(
+            repo_id=training_config.get("ckpt_path", f"gokulkarthik/codec-latent-denoiser-{training_config_name}"),
+            push_every_n_epochs=training_config.get("push_every_n_epochs", 10),
+            processor=processor,
+        )
+        trainer.callbacks.append(push_callback)
     logging.info("Trainer set successfully.")
 
     logging.info("Training...")
@@ -93,10 +101,11 @@ def train(training_config: DictConfig) -> None:
     logging.info("Training completed.")
 
     logging.info("Testing...")
-    trainer.test(data_module)
+    trainer.test(trainer.model, datamodule=data_module)
     logging.info("Testing completed.")
 
 if __name__ == "__main__":
+    torch.set_float32_matmul_precision("high")
     load_dotenv()
     seed_everything(0)
     train()

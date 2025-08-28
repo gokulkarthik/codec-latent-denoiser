@@ -19,6 +19,7 @@ dependencies = [
     "wandb (>=0.21.1,<0.22.0)",
     "streamlit (>=1.49.0,<2.0.0)",
     "hydra-core (==1.3.2)",
+    "pesq (>=0.0.4,<0.0.5)",
 ]
 
 [tool.poetry]

@@ -1,7 +1,8 @@
+__pycache__/
 outputs/
-notebooks/playground_*.ipynb
 wandb/
 
+playground_*.ipynb
 *.pyc
 .env
 .DS_Store

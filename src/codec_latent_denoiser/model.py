@@ -14,11 +14,11 @@ class MLPDenoiser(nn.Module):
         super().__init__()
         self.config = config
         self.hidden_size = config.codec_config.hidden_size
-        self.layer1 = nn.Linear(self.hidden_size, self.hidden_size * 4)
-        self.layer2 = nn.Linear(self.hidden_size * 4, self.hidden_size)
-        self.layer_norm = nn.LayerNorm(self.hidden_size)
+        self.layer1 = nn.Linear(self.hidden_size, self.hidden_size * 2, bias=False)
+        self.layer2 = nn.Linear(self.hidden_size * 2, self.hidden_size, bias=False)
+        self.layer_norm = nn.LayerNorm(self.hidden_size, bias=False)
         self.activation = nn.GELU()
-        self.dropout = nn.Dropout(0.1)
+        self.dropout = nn.Dropout(0.05)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x_before = x
@@ -68,7 +68,7 @@ class CodecLatentDenoiser(PreTrainedModel):
         if decode:
             audio_generated = self.codec.decode(
                 quantized_representation=quantized_representation
-            )
+            ).audio_values
             output.audio_generated = audio_generated
 
         return output
