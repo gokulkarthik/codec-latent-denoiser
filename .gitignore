@@ -1,0 +1,7 @@
+outputs/
+notebooks/playground_*.ipynb
+wandb/
+
+*.pyc
+.env
+.DS_Store

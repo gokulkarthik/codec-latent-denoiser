@@ -1,0 +1,33 @@
+[project]
+name = "codec-latent-denoiser"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "gokul",email = "gokulkarthikk@gmail.com"}
+]
+readme = "README.md"
+requires-python = "^3.12,<3.14"
+dependencies = [
+    "torch (>=2.8.0,<3.0.0)",
+    "librosa (>=0.11.0,<0.12.0)",
+    "transformers (>=4.55.4,<5.0.0)",
+    "datasets (==3.6.0)",
+    "torchmetrics (>=1.8.1,<2.0.0)",
+    "torchaudio (>=2.8.0,<3.0.0)",
+    "lightning (>=2.5.3,<3.0.0)",
+    "python-dotenv (>=1.1.1,<2.0.0)",
+    "wandb (>=0.21.1,<0.22.0)",
+    "streamlit (>=1.49.0,<2.0.0)",
+    "hydra-core (==1.3.2)",
+]
+
+[tool.poetry]
+packages = [{include = "codec_latent_denoiser", from = "src"}]
+
+
+[tool.poetry.group.dev.dependencies]
+jupyter = "^1.1.1"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
