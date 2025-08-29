@@ -4,6 +4,7 @@ from typing import Literal
 
 class CodecLatentDenoiserConfig(PretrainedConfig):
     """Configuration class for CodecLatentDenoiser."""
+
     model_type = "codec_latent_denoiser"
 
     def __init__(

@@ -5,7 +5,11 @@ import torch.nn as nn
 from datasets import load_dataset, Audio
 from lightning.pytorch.callbacks import Callback
 from torch.utils.data import DataLoader, Dataset
-from torchmetrics.audio import PerceptualEvaluationSpeechQuality, DeepNoiseSuppressionMeanOpinionScore, NonIntrusiveSpeechQualityAssessment
+from torchmetrics.audio import (
+    PerceptualEvaluationSpeechQuality,
+    DeepNoiseSuppressionMeanOpinionScore,
+    NonIntrusiveSpeechQualityAssessment,
+)
 from transformers import get_scheduler, DacConfig, DacModel
 from typing import Literal
 
@@ -19,7 +23,7 @@ from codec_latent_denoiser import (
 
 class CodecLatentDenoiserLightningModule(L.LightningModule):
     """Lightning module for training the Codec Latent Denoiser."""
-    
+
     def __init__(
         self,
         pretrained_codec_path: str,
@@ -37,8 +41,9 @@ class CodecLatentDenoiserLightningModule(L.LightningModule):
 
         codec_config = DacConfig.from_pretrained(pretrained_codec_path)
         sampling_rate = codec_config.sampling_rate
-        self.model_config = CodecLatentDenoiserConfig(codec_config=codec_config,
-                                                      denoiser_type=denoiser_type)
+        self.model_config = CodecLatentDenoiserConfig(
+            codec_config=codec_config, denoiser_type=denoiser_type
+        )
         self.model = CodecLatentDenoiser(self.model_config)
         print(f"Loading codec from {pretrained_codec_path}...")
         self.model.codec = DacModel.from_pretrained(pretrained_codec_path)
@@ -176,7 +181,7 @@ class CodecLatentDenoiserLightningModule(L.LightningModule):
 
 class CodecLatentDenoiserDataset(Dataset):
     """Dataset wrapper for codec latent denoiser training."""
-    
+
     def __init__(self, dataset: Dataset) -> None:
         self.dataset = dataset
 
@@ -193,7 +198,7 @@ class CodecLatentDenoiserDataset(Dataset):
 
 class CodecLatentDenoiserDatasetCollator:
     """Collator for batching dataset samples."""
-    
+
     def __init__(
         self, processor: CodecLatentDenoiserProcessor, padding: str = "longest"
     ) -> None:
@@ -217,7 +222,7 @@ class CodecLatentDenoiserDatasetCollator:
 
 class CodecLatentDenoiserLightningDataModule(L.LightningDataModule):
     """Lightning data module for codec latent denoiser."""
-    
+
     def __init__(
         self,
         data_path_hf_hub: str,
@@ -299,7 +304,7 @@ class CodecLatentDenoiserLightningDataModule(L.LightningDataModule):
 
 class HuggingFaceHubPushCallback(Callback):
     """Callback to push model to HuggingFace Hub."""
-    
+
     def __init__(
         self,
         repo_id: str,
@@ -311,7 +316,9 @@ class HuggingFaceHubPushCallback(Callback):
         self.push_every_n_epochs = push_every_n_epochs
         self.processor = processor
 
-    def on_train_epoch_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
+    def on_train_epoch_end(
+        self, trainer: L.Trainer, pl_module: L.LightningModule
+    ) -> None:
         """Push model to hub at end of training epoch."""
         is_final_epoch = trainer.current_epoch == trainer.max_epochs - 1
         is_interval_epoch = (trainer.current_epoch + 1) % self.push_every_n_epochs == 0
@@ -328,4 +335,3 @@ class HuggingFaceHubPushCallback(Callback):
                 private=True,
                 commit_message=f"Epoch {trainer.current_epoch + 1}",
             )
-            

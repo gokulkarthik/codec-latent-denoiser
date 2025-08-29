@@ -12,7 +12,7 @@ from codec_latent_denoiser.config import CodecLatentDenoiserConfig
 
 class MLPDenoiser(nn.Module):
     """MLP-based denoiser for codec latent space."""
-    
+
     def __init__(self, config: CodecLatentDenoiserConfig) -> None:
         super().__init__()
         self.config = config
@@ -53,7 +53,7 @@ class LLaMADenoiser(nn.Module):
         )
         self.backbone = LlamaModel(denoiser_config)
         self.out = nn.Linear(self.hidden_size, self.hidden_size)
-        
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass through the LLaMA denoiser."""
         x_original = x
@@ -66,12 +66,14 @@ class LLaMADenoiser(nn.Module):
 @dataclass
 class CodecLatentDenoiserOutput(ModelOutput):
     """Output class for CodecLatentDenoiser."""
+
     audio_embeddings: torch.Tensor = None
     audio_generated: Optional[torch.Tensor] = None
 
 
 class CodecLatentDenoiser(PreTrainedModel):
     """Main model for codec latent denoising."""
+
     config_class = CodecLatentDenoiserConfig
 
     def __init__(self, config: CodecLatentDenoiserConfig) -> None:

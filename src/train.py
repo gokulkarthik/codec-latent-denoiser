@@ -14,7 +14,7 @@ from codec_latent_denoiser import CodecLatentDenoiserProcessor
 from lightning_utils import (
     CodecLatentDenoiserLightningDataModule,
     CodecLatentDenoiserLightningModule,
-    HuggingFaceHubPushCallback
+    HuggingFaceHubPushCallback,
 )
 
 
@@ -31,7 +31,9 @@ def train(training_config: DictConfig) -> None:
         training_config.get("pretrained_codec_path", "descript/dac_16khz"),
     )
     model = CodecLatentDenoiserLightningModule(
-        pretrained_codec_path=training_config.get("pretrained_codec_path", "descript/dac_16khz"),
+        pretrained_codec_path=training_config.get(
+            "pretrained_codec_path", "descript/dac_16khz"
+        ),
         denoiser_type=training_config.get("denoiser_type", "mlp"),
         learning_rate=training_config.get("learning_rate", 1e-3),
         weight_decay=training_config.get("weight_decay", 1e-5),
@@ -84,7 +86,10 @@ def train(training_config: DictConfig) -> None:
     if trainer.is_global_zero:
         hf_hub_entity = training_config.get("hf_hub_entity", "gokulkarthik")
         push_callback = HuggingFaceHubPushCallback(
-            repo_id=training_config.get("ckpt_path", f"{hf_hub_entity}/codec-latent-denoiser-{training_config_name}"),
+            repo_id=training_config.get(
+                "ckpt_path",
+                f"{hf_hub_entity}/codec-latent-denoiser-{training_config_name}",
+            ),
             push_every_n_epochs=training_config.get("push_every_n_epochs", 10),
             processor=processor,
         )
