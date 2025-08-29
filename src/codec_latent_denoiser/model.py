@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 from dataclasses import dataclass
-from transformers import PreTrainedModel, DacModel
+from transformers import PreTrainedModel, DacModel, DacConfig
 from transformers.utils import ModelOutput
 from typing import Optional
 
@@ -10,6 +10,8 @@ from codec_latent_denoiser.config import CodecLatentDenoiserConfig
 
 
 class MLPDenoiser(nn.Module):
+    """MLP-based denoiser for codec latent space."""
+    
     def __init__(self, config: CodecLatentDenoiserConfig) -> None:
         super().__init__()
         self.config = config
@@ -21,6 +23,7 @@ class MLPDenoiser(nn.Module):
         self.dropout = nn.Dropout(0.05)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass through the MLP denoiser."""
         x_before = x
         x = self.layer_norm(x)
         x = self.dropout(self.activation(self.layer1(x)))
@@ -30,43 +33,49 @@ class MLPDenoiser(nn.Module):
 
 @dataclass
 class CodecLatentDenoiserOutput(ModelOutput):
+    """Output class for CodecLatentDenoiser."""
     audio_embeddings: torch.Tensor = None
     audio_generated: Optional[torch.Tensor] = None
 
 
 class CodecLatentDenoiser(PreTrainedModel):
+    """Main model for codec latent denoising."""
     config_class = CodecLatentDenoiserConfig
 
     def __init__(self, config: CodecLatentDenoiserConfig) -> None:
+        if not isinstance(config.codec_config, DacConfig):
+            config.codec_config = DacConfig(**config.codec_config)
         super().__init__(config)
         self.config = config
-        self.codec = DacModel.from_pretrained(config.pretrained_codec_path)
-
-        if config.denoiser_type == "mlp":
-            self.denoiser = MLPDenoiser(config)
+        self.codec = DacModel(self.config.codec_config)
+        if self.config.denoiser_type == "mlp":
+            self.denoiser = MLPDenoiser(self.config)
         else:
-            raise ValueError(f"Invalid denoiser type: {config.denoiser_type}")
+            raise ValueError(f"Invalid denoiser type: {self.config.denoiser_type}")
 
     def forward(
         self,
         x: torch.Tensor,
         denoise: bool = True,
         decode: bool = False,
-    ) -> torch.Tensor:
-        audio_embeddings = self.codec.encode(x).audio_embeddings  # [B, D, T]
+    ) -> CodecLatentDenoiserOutput:
+        """Forward pass through the model."""
+        audio_embeddings = self.codec.encode(
+            x
+        ).quantized_representation  # [B, C, T] -> [B, D, T]
         if denoise:
             audio_embeddings = audio_embeddings.transpose(1, 2)  # [B, T, D]
             audio_embeddings = self.denoiser(audio_embeddings)  # [B, T, D]
             audio_embeddings = audio_embeddings.transpose(1, 2)  # [B, D, T]
 
-        output = CodecLatentDenoiserOutput(
-            audio_embeddings=audio_embeddings
-        )
+        output = CodecLatentDenoiserOutput(audio_embeddings=audio_embeddings)
 
         if decode:
+            output.audio_generated = torch.zeros_like(x)  # [B, C, T]
             audio_generated = self.codec.decode(
                 quantized_representation=audio_embeddings
-            ).audio_values
-            output.audio_generated = audio_generated
+            ).audio_values.unsqueeze(1)  # [B, T_out] -> [B, 1, T_out]
+            T_min = min(x.shape[2], audio_generated.shape[2])
+            output.audio_generated[:, :, :T_min] = audio_generated[:, :, :T_min]
 
         return output

@@ -3,15 +3,15 @@ from typing import Literal
 
 
 class CodecLatentDenoiserConfig(PretrainedConfig):
+    """Configuration class for CodecLatentDenoiser."""
     model_type = "codec_latent_denoiser"
 
     def __init__(
         self,
-        pretrained_codec_path: str = "descript/dac_16khz",
+        codec_config: DacConfig = DacConfig(),
         denoiser_type: Literal["mlp"] = "mlp",
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
-        self.pretrained_codec_path = pretrained_codec_path
+        self.codec_config = codec_config
         self.denoiser_type = denoiser_type
-        self.codec_config = DacConfig.from_pretrained(pretrained_codec_path)

@@ -5,8 +5,8 @@ import torch.nn as nn
 from datasets import load_dataset, Audio
 from lightning.pytorch.callbacks import Callback
 from torch.utils.data import DataLoader, Dataset
-from torchmetrics.audio import PerceptualEvaluationSpeechQuality
-from transformers import get_scheduler
+from torchmetrics.audio import PerceptualEvaluationSpeechQuality, DeepNoiseSuppressionMeanOpinionScore, NonIntrusiveSpeechQualityAssessment
+from transformers import get_scheduler, DacConfig, DacModel
 
 from codec_latent_denoiser import (
     CodecLatentDenoiser,
@@ -17,36 +17,52 @@ from codec_latent_denoiser import (
 
 
 class CodecLatentDenoiserLightningModule(L.LightningModule):
+    """Lightning module for training the Codec Latent Denoiser."""
+    
     def __init__(
         self,
-        config: CodecLatentDenoiserConfig,
+        pretrained_codec_path: str,
         learning_rate: float = 1e-3,
         weight_decay: float = 1e-5,
         train_only_denoiser: bool = True,
     ) -> None:
         super().__init__()
-        self.config = config
+        self.pretrained_codec_path = pretrained_codec_path
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
         self.train_only_denoiser = train_only_denoiser
-        self.model = CodecLatentDenoiser(config)
+
+        codec_config = DacConfig.from_pretrained(pretrained_codec_path)
+        sampling_rate = codec_config.sampling_rate
+        self.model_config = CodecLatentDenoiserConfig(codec_config=codec_config)
+        self.model = CodecLatentDenoiser(self.model_config)
+        print(f"Loading codec from {pretrained_codec_path}...")
+        self.model.codec = DacModel.from_pretrained(pretrained_codec_path)
+        print(f"Codec loaded successfully from {pretrained_codec_path}.")
+
         self.loss_fn = nn.MSELoss()
-        self.pesq = PerceptualEvaluationSpeechQuality(16000, "wb")
+        pesq_mode = "wb" if sampling_rate == 16000 else "nb"
+        self.pesq = PerceptualEvaluationSpeechQuality(sampling_rate, pesq_mode)
+        self.dnsmos = DeepNoiseSuppressionMeanOpinionScore(sampling_rate, False)
+        self.nisqa = NonIntrusiveSpeechQualityAssessment(sampling_rate)
+
         if self.train_only_denoiser:
-            self.model.denoiser.train()
-            self.model.codec.eval()
             for name, param in self.model.named_parameters():
                 if "denoiser" not in name:
                     param.requires_grad = False
+            self.model.denoiser.train()
+            self.model.codec.eval()
         else:
             self.model.train()
 
     def forward(
         self, x: torch.Tensor, denoise: bool = True, decode: bool = False
     ) -> CodecLatentDenoiserOutput:
+        """Forward pass through the model."""
         return self.model(x, denoise, decode)
 
     def common_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
+        """Common training/validation step."""
         clean_speech = batch["input_values_clean"]
         noisy_speech = batch["input_values_noisy"]
         clean_speech_quantized = self.model(
@@ -57,17 +73,20 @@ class CodecLatentDenoiserLightningModule(L.LightningModule):
         ).audio_embeddings
         loss = self.loss_fn(clean_speech_quantized, noisy_speech_quantized)
         return loss
-    
+
     def predict_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
+        """Prediction step."""
         noisy_speech = batch["input_values_noisy"]
-        noisy_speech_denoised = self.model(
+        noisy_speech_denoised_values = self.model(
             noisy_speech, denoise=True, decode=True
-        ).audio_generated.unsqueeze(1)
-        noisy_speech_denoised_tensor = torch.zeros_like(noisy_speech)
-        noisy_speech_denoised_tensor[:, :, :min(noisy_speech_denoised.shape[2], noisy_speech.shape[2])] = noisy_speech_denoised
-        return noisy_speech_denoised_tensor
+        ).audio_generated
+        noisy_speech_denoised = torch.zeros_like(noisy_speech)
+        T_min = min(noisy_speech_denoised.shape[-1], noisy_speech.shape[-1])
+        noisy_speech_denoised[:, :, :T_min] = noisy_speech_denoised_values[:, :, :T_min]
+        return noisy_speech_denoised
 
     def training_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
+        """Training step."""
         current_lr = self.trainer.optimizers[0].param_groups[0]["lr"]
         loss = self.common_step(batch, batch_idx)
         self.log("train/learning_rate", current_lr, prog_bar=True, sync_dist=True)
@@ -75,34 +94,51 @@ class CodecLatentDenoiserLightningModule(L.LightningModule):
         return loss
 
     def validation_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
+        """Validation step."""
         loss = self.common_step(batch, batch_idx)
         preds = self.predict_step(batch, batch_idx)
         pesq_score = self.pesq(
             preds=preds,
             target=batch["input_values_clean"],
         )
+        dnsmos_score = self.dnsmos(preds=preds)[-1]
+        nisqa_score = self.nisqa(preds=preds)[0]
         self.log("val/loss", loss, prog_bar=True, sync_dist=True)
         self.log("val/pesq", pesq_score, prog_bar=True, sync_dist=True)
+        self.log("val/dnsmos", dnsmos_score, prog_bar=True, sync_dist=True)
+        self.log("val/nisqa", nisqa_score, prog_bar=True, sync_dist=True)
         return loss
 
     def test_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
+        """Test step."""
         loss = self.common_step(batch, batch_idx)
         preds = self.predict_step(batch, batch_idx)
         pesq_score = self.pesq(
             preds=preds,
             target=batch["input_values_clean"],
         )
+        dnsmos_score = self.dnsmos(preds=preds)[-1]
+        nisqa_score = self.nisqa(preds=preds)[0]
         self.log("test/loss", loss, prog_bar=True, sync_dist=True)
         self.log("test/pesq", pesq_score, prog_bar=True, sync_dist=True)
+        self.log("test/dnsmos", dnsmos_score, prog_bar=True, sync_dist=True)
+        self.log("test/nisqa", nisqa_score, prog_bar=True, sync_dist=True)
         return loss
-    
+
     def on_validation_epoch_end(self) -> None:
+        """Reset metrics at end of validation epoch."""
         self.pesq.reset()
-    
+        self.dnsmos.reset()
+        self.nisqa.reset()
+
     def on_test_epoch_end(self) -> None:
+        """Reset metrics at end of test epoch."""
         self.pesq.reset()
+        self.dnsmos.reset()
+        self.nisqa.reset()
 
     def configure_optimizers(self) -> dict:
+        """Configure optimizers and schedulers."""
         if self.train_only_denoiser:
             parameters = self.model.denoiser.parameters()
         else:
@@ -135,6 +171,8 @@ class CodecLatentDenoiserLightningModule(L.LightningModule):
 
 
 class CodecLatentDenoiserDataset(Dataset):
+    """Dataset wrapper for codec latent denoiser training."""
+    
     def __init__(self, dataset: Dataset) -> None:
         self.dataset = dataset
 
@@ -150,6 +188,8 @@ class CodecLatentDenoiserDataset(Dataset):
 
 
 class CodecLatentDenoiserDatasetCollator:
+    """Collator for batching dataset samples."""
+    
     def __init__(
         self, processor: CodecLatentDenoiserProcessor, padding: str = "longest"
     ) -> None:
@@ -172,6 +212,8 @@ class CodecLatentDenoiserDatasetCollator:
 
 
 class CodecLatentDenoiserLightningDataModule(L.LightningDataModule):
+    """Lightning data module for codec latent denoiser."""
+    
     def __init__(
         self,
         data_path_hf_hub: str,
@@ -191,6 +233,7 @@ class CodecLatentDenoiserLightningDataModule(L.LightningDataModule):
         self.collator = CodecLatentDenoiserDatasetCollator(self.processor)
 
     def setup(self, stage: str) -> None:
+        """Setup datasets for training/validation/testing."""
         dataset = load_dataset(self.data_path_hf_hub)
         if self.clean_speech_key != "clean":
             dataset = dataset.rename_column(self.clean_speech_key, "clean")
@@ -220,6 +263,7 @@ class CodecLatentDenoiserLightningDataModule(L.LightningDataModule):
         self.dataset_test = CodecLatentDenoiserDataset(self.dataset_test)
 
     def train_dataloader(self) -> DataLoader:
+        """Get training dataloader."""
         return DataLoader(
             self.dataset_train,
             batch_size=self.batch_size,
@@ -229,6 +273,7 @@ class CodecLatentDenoiserLightningDataModule(L.LightningDataModule):
         )
 
     def val_dataloader(self) -> DataLoader:
+        """Get validation dataloader."""
         return DataLoader(
             self.dataset_val,
             batch_size=self.batch_size,
@@ -238,6 +283,7 @@ class CodecLatentDenoiserLightningDataModule(L.LightningDataModule):
         )
 
     def test_dataloader(self) -> DataLoader:
+        """Get test dataloader."""
         return DataLoader(
             self.dataset_test,
             batch_size=self.batch_size,
@@ -248,18 +294,21 @@ class CodecLatentDenoiserLightningDataModule(L.LightningDataModule):
 
 
 class HuggingFaceHubPushCallback(Callback):
+    """Callback to push model to HuggingFace Hub."""
+    
     def __init__(
         self,
         repo_id: str,
         push_every_n_epochs: int = 1,
         processor: CodecLatentDenoiserProcessor = None,
-    ):
+    ) -> None:
         super().__init__()
         self.repo_id = repo_id
         self.push_every_n_epochs = push_every_n_epochs
         self.processor = processor
 
-    def on_train_epoch_end(self, trainer, pl_module):
+    def on_train_epoch_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
+        """Push model to hub at end of training epoch."""
         is_final_epoch = trainer.current_epoch == trainer.max_epochs - 1
         is_interval_epoch = (trainer.current_epoch + 1) % self.push_every_n_epochs == 0
 

@@ -10,10 +10,7 @@ from lightning.pytorch import seed_everything
 from lightning.pytorch.loggers import WandbLogger
 from omegaconf import DictConfig, OmegaConf
 
-from codec_latent_denoiser import (
-    CodecLatentDenoiserConfig,
-    CodecLatentDenoiserProcessor,
-)
+from codec_latent_denoiser import CodecLatentDenoiserProcessor
 from lightning_utils import (
     CodecLatentDenoiserLightningDataModule,
     CodecLatentDenoiserLightningModule,
@@ -23,23 +20,18 @@ from lightning_utils import (
 
 @hydra.main(version_base=None, config_path="train_configs", config_name="default")
 def train(training_config: DictConfig) -> None:
+    """Main training function."""
     try:
         training_config_name = sys.argv[1].split("=")[1]
     except IndexError:
         training_config_name = "default"
 
     logging.info("Loading model...")
-    model_config = CodecLatentDenoiserConfig(
-        pretrained_codec_path=training_config.get(
-            "pretrained_codec_path", "descript/dac_16khz"
-        ),
-        denoiser_type=training_config.get("denoiser_type", "mlp"),
-    )
     processor = CodecLatentDenoiserProcessor.from_pretrained(
         training_config.get("pretrained_codec_path", "descript/dac_16khz")
     )
     model = CodecLatentDenoiserLightningModule(
-        config=model_config,
+        pretrained_codec_path=training_config.get("pretrained_codec_path", "descript/dac_16khz"),
         learning_rate=training_config.get("learning_rate", 1e-3),
         weight_decay=training_config.get("weight_decay", 1e-5),
         train_only_denoiser=training_config.get("train_only_denoiser", True),
@@ -58,7 +50,7 @@ def train(training_config: DictConfig) -> None:
     )
     logging.info("Data module loaded successfully.")
 
-    logging.info("Settting trainer...")
+    logging.info("Setting trainer...")
     wandb_logger = WandbLogger(
         project="Codec-Latent-Denoiser",
         config=OmegaConf.to_container(training_config, resolve=True),
@@ -103,6 +95,7 @@ def train(training_config: DictConfig) -> None:
     logging.info("Testing...")
     trainer.test(trainer.model, datamodule=data_module)
     logging.info("Testing completed.")
+
 
 if __name__ == "__main__":
     torch.set_float32_matmul_precision("high")

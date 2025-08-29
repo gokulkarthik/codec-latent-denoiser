@@ -705,6 +705,24 @@ files = [
 markers = {main = "platform_system == \"Windows\"", dev = "sys_platform == \"win32\""}
 
 [[package]]
+name = "coloredlogs"
+version = "15.0.1"
+description = "Colored terminal output for Python's logging module"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+groups = ["main"]
+files = [
+    {file = "coloredlogs-15.0.1-py2.py3-none-any.whl", hash = "sha256:612ee75c546f53e92e70049c9dbfcc18c935a2b9a53b66085ce9ef6a6e5c0934"},
+    {file = "coloredlogs-15.0.1.tar.gz", hash = "sha256:7c991aa71a4577af2f82600d8f8f3a89f936baeaf9b50a9c197da014e5bf16b0"},
+]
+
+[package.dependencies]
+humanfriendly = ">=9.1"
+
+[package.extras]
+cron = ["capturer (>=2.4)"]
+
+[[package]]
 name = "comm"
 version = "0.2.3"
 description = "Jupyter Python Comm implementation, for usage in ipykernel, xeus-python etc."
@@ -878,6 +896,18 @@ groups = ["main"]
 files = [
     {file = "filelock-3.19.1-py3-none-any.whl", hash = "sha256:d38e30481def20772f5baf097c122c3babc4fcdb7e14e57049eb9d88c6dc017d"},
     {file = "filelock-3.19.1.tar.gz", hash = "sha256:66eda1888b0171c998b35be2bcc0f6d75c388a7ce20c3f3f37aa8e96c2dddf58"},
+]
+
+[[package]]
+name = "flatbuffers"
+version = "25.2.10"
+description = "The FlatBuffers serialization format for Python"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "flatbuffers-25.2.10-py2.py3-none-any.whl", hash = "sha256:ebba5f4d5ea615af3f7fd70fc310636fbb2bbd1f566ac0a23d98dd412de50051"},
+    {file = "flatbuffers-25.2.10.tar.gz", hash = "sha256:97e451377a41262f8d9bd4295cc836133415cc03d8cb966410a4af92eb00d26e"},
 ]
 
 [[package]]
@@ -1202,6 +1232,21 @@ tensorflow-testing = ["keras (<3.0)", "tensorflow"]
 testing = ["InquirerPy (==0.3.4)", "Jinja2", "Pillow", "aiohttp", "authlib (>=1.3.2)", "fastapi", "gradio (>=4.0.0)", "httpx", "itsdangerous", "jedi", "numpy", "pytest (>=8.1.1,<8.2.2)", "pytest-asyncio", "pytest-cov", "pytest-env", "pytest-mock", "pytest-rerunfailures", "pytest-vcr", "pytest-xdist", "soundfile", "urllib3 (<2.0)"]
 torch = ["safetensors[torch]", "torch"]
 typing = ["types-PyYAML", "types-requests", "types-simplejson", "types-toml", "types-tqdm", "types-urllib3", "typing-extensions (>=4.8.0)"]
+
+[[package]]
+name = "humanfriendly"
+version = "10.0"
+description = "Human friendly output for text interfaces using Python"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+groups = ["main"]
+files = [
+    {file = "humanfriendly-10.0-py2.py3-none-any.whl", hash = "sha256:1697e1a8a8f550fd43c2865cd84542fc175a61dcb779b6fee18cf6b6ccba1477"},
+    {file = "humanfriendly-10.0.tar.gz", hash = "sha256:6b0b831ce8f15f7300721aa49829fc4e83921a9a301cc7f606be6686a2288ddc"},
+]
+
+[package.dependencies]
+pyreadline3 = {version = "*", markers = "sys_platform == \"win32\" and python_version >= \"3.8\""}
 
 [[package]]
 name = "hydra-core"
@@ -2752,6 +2797,37 @@ antlr4-python3-runtime = "==4.9.*"
 PyYAML = ">=5.1.0"
 
 [[package]]
+name = "onnxruntime-gpu"
+version = "1.22.0"
+description = "ONNX Runtime is a runtime accelerator for Machine Learning models"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "onnxruntime_gpu-1.22.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:965da7d33a54917e8e5176f292cc22640819f328370f4fb86087908745b03708"},
+    {file = "onnxruntime_gpu-1.22.0-cp310-cp310-win_amd64.whl", hash = "sha256:6db51c375ffe3887fe5cce61a0ae054e5e9c1eaf0603f8a106589a819976e4b2"},
+    {file = "onnxruntime_gpu-1.22.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:d30c1512f22b1f01bacb4f177d49cbefd23e0f4bef56066f1282992d133e6ff8"},
+    {file = "onnxruntime_gpu-1.22.0-cp311-cp311-win_amd64.whl", hash = "sha256:0f1719f7cca76075b398a7d0466ead62d78fd2b8c0ea053dcf65d80c813103e8"},
+    {file = "onnxruntime_gpu-1.22.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:86b064c8f6cbe6da03f51f46351237d985f8fd5eb907d3f9997ea91881131a13"},
+    {file = "onnxruntime_gpu-1.22.0-cp312-cp312-win_amd64.whl", hash = "sha256:89cfd71e1ba17a4668e8770e344f22cde64bfd70b2ad3d03b8a390d4414b5995"},
+    {file = "onnxruntime_gpu-1.22.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:c3e635792931c5edf48a6a44b8daf4f74a9458e2d60245d24d91e29b6c1c7aa5"},
+    {file = "onnxruntime_gpu-1.22.0-cp313-cp313-win_amd64.whl", hash = "sha256:082c9744b0470448a7d814babe058d0b5074380f32839aa655e5e5f9975f6d94"},
+    {file = "onnxruntime_gpu-1.22.0-cp313-cp313t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:d1559033601d71023d72a8e279b2575a104de5f46e136f87534206aa2044eb1c"},
+]
+
+[package.dependencies]
+coloredlogs = "*"
+flatbuffers = "*"
+numpy = ">=1.21.6"
+packaging = "*"
+protobuf = "*"
+sympy = "*"
+
+[package.extras]
+cuda = ["nvidia-cuda-nvrtc-cu12 (>=12.0,<13.0)", "nvidia-cuda-runtime-cu12 (>=12.0,<13.0)", "nvidia-cufft-cu12 (>=11.0,<12.0)", "nvidia-curand-cu12 (>=10.0,<11.0)"]
+cudnn = ["nvidia-cudnn-cu12 (>=9.0,<10.0)"]
+
+[[package]]
 name = "packaging"
 version = "25.0"
 description = "Core utilities for Python packages"
@@ -3510,6 +3586,38 @@ files = [
 
 [package.extras]
 windows-terminal = ["colorama (>=0.4.6)"]
+
+[[package]]
+name = "pyreadline3"
+version = "3.5.4"
+description = "A python implementation of GNU readline."
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+markers = "sys_platform == \"win32\""
+files = [
+    {file = "pyreadline3-3.5.4-py3-none-any.whl", hash = "sha256:eaf8e6cc3c49bcccf145fc6067ba8643d1df34d604a1ec0eccbf7a18e6d3fae6"},
+    {file = "pyreadline3-3.5.4.tar.gz", hash = "sha256:8d57d53039a1c75adba8e50dd3d992b28143480816187ea5efbd5c78e6c885b7"},
+]
+
+[package.extras]
+dev = ["build", "flake8", "mypy", "pytest", "twine"]
+
+[[package]]
+name = "pystoi"
+version = "0.4.1"
+description = "Computes Short Term Objective Intelligibility measure"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "pystoi-0.4.1-py2.py3-none-any.whl", hash = "sha256:e277b671663d26d35a2416c9c8010a74084e6c3970354506398051a554896939"},
+    {file = "pystoi-0.4.1.tar.gz", hash = "sha256:1c6f50d6fbfee46b00c922458cdbd27228d9830ca81cea788fd600fc2f7de6e4"},
+]
+
+[package.dependencies]
+numpy = "*"
+scipy = "*"
 
 [[package]]
 name = "python-dateutil"
@@ -5549,4 +5657,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12,<3.14"
-content-hash = "61d956688cfbfe4e27afc964e15df50b72de1d6162eeb64067df361daf900b1f"
+content-hash = "af85fdfe6fe4584165a3487f3a42fa37dad520958e241497148a54c4ee95a6a9"
