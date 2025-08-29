@@ -1,5 +1,5 @@
 # Codec Latent Denoiser
-This project explores speech enhancement in the latent space of neural audio codecs (DAC) by training a lightweight denoiser on continuous quantized representations, inspired from the work ["Efficient Speech Enhancement via Embeddings from Pre-trained Generative Audioencoders"](https://arxiv.org/pdf/2506.11514). 
+This project explores speech enhancement in the latent space of neural audio codecs (DAC) by training a denoiser neural netowrk on continuous quantized representations, inspired from the work ["Efficient Speech Enhancement via Embeddings from Pre-trained Generative Audioencoders"](https://arxiv.org/pdf/2506.11514). 
 
 ## Structure
 
@@ -34,7 +34,7 @@ Copy `.env.example` as `.env` and fill the values.`
 
 ### Train the model:
 ```bash
-poetry run python src/train.py --config-name=default
+poetry run python src/train.py --config-name=e2
 ```
 Configure the hyperparameters in `src/train_configs`
 
