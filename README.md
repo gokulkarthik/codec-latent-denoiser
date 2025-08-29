@@ -7,7 +7,6 @@ This project explores speech enhancement in the latent space of neural audio cod
   - `demo.py`: Streamlit demo application for interactive model testing
 - `notebooks/`: Jupyter notebooks for experiments and analysis
   - `demo.ipynb`: Interactive demo notebook
-- `outputs/`: Directory for model outputs, checkpoints, and logs
 - `src/`: Main source code
   - `codec_latent_denoiser/`: Core package
     - `__init__.py`: Package initialization and exports
@@ -17,7 +16,6 @@ This project explores speech enhancement in the latent space of neural audio cod
   - `lightning_utils.py`: PyTorch Lightning utilities (modules, datasets, callbacks)
   - `train.py`: Training script
   - `train_configs/`: Configuration files for training
-    - `default.yaml`: Default training configuration
 
 ## Setup
 
