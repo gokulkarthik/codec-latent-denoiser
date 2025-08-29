@@ -20,7 +20,6 @@ While the paper experiments with different discriminative and generative audio e
 
   * Started with a **3-layer MLP**, which reduced noise but introduced artifacts (likely due to lack of temporal modeling).
   * Switched to a **2-layer Transformer (LLaMA-style)**. This maintained efficiency (\~30M params) but leveraged sequence modeling, yielding cleaner outputs without added artifacts.
-  * Conclusion: shallow Transformers are a better fit than plain MLPs for sequential latent features.
 
 ---
 
@@ -28,7 +27,7 @@ While the paper experiments with different discriminative and generative audio e
 
 * Used **`JacobLinCool/VoiceBank-DEMAND-16k`** from Hugging Face Hub: \~12k training / ~800 test pairs of noisy/clean speech.
 * Chose this dataset for its **ease of loading and pairing**.
-* If not available, fallback would have been **creating noisy data via low-bitrate codec re-encoding** (as suggested in the take-home brief).
+* If not available, fallback would have been **creating noisy data via low-bitrate codec re-encoding**.
 
 ---
 
