@@ -41,11 +41,11 @@ To train the model:
 poetry run python src/train.py --config-name=e2
 ```
 
-Configure the hyperparameters in `src/train_configs/` directory.
+Configure the hyperparameters in [`src/train_configs/`](./src/train_configs/) directory.
 
 ### Speech Denoising
 
-The primary use case is removing noise from speech audio. Here's how to use the model for denoising:
+The primary use case is removing noise from speech audio. Here's how to use the [model](https://huggingface.co/gokulkarthik/codec-latent-denoiser-e2) for denoising that was trained with the [`e2` config](./src/train_configs/e2.yaml):
 
 ```python
 import torch
@@ -69,7 +69,7 @@ with torch.inference_mode():
     clean_audio = model(inputs, denoise=True, decode=True).audio_generated[0][0]
 ```
 
-For more detailed examples and interactive exploration, check the Jupyter notebook at `notebooks/demo.ipynb`.
+For more detailed examples and interactive exploration, check the Jupyter notebook at [`notebooks/demo.ipynb`](./notebooks/demo.ipynb).
 
 ### Interactive Demo
 
