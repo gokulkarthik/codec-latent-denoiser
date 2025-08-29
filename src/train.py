@@ -80,8 +80,9 @@ def train(training_config: DictConfig) -> None:
         check_val_every_n_epoch=training_config.get("check_val_every_n_epoch", 1),
     )
     if trainer.is_global_zero:
+        hf_hub_entity = training_config.get("hf_hub_entity", "gokulkarthik"),
         push_callback = HuggingFaceHubPushCallback(
-            repo_id=training_config.get("ckpt_path", f"gokulkarthik/codec-latent-denoiser-{training_config_name}"),
+            repo_id=training_config.get("ckpt_path", f"{hf_hub_entity}/codec-latent-denoiser-{training_config_name}"),
             push_every_n_epochs=training_config.get("push_every_n_epochs", 10),
             processor=processor,
         )
