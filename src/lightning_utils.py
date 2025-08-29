@@ -51,10 +51,10 @@ class CodecLatentDenoiserLightningModule(L.LightningModule):
         noisy_speech = batch["input_values_noisy"]
         clean_speech_quantized = self.model(
             clean_speech, denoise=False, decode=False
-        ).quantized_representation
+        ).audio_embeddings
         noisy_speech_quantized = self.model(
             noisy_speech, denoise=True, decode=False
-        ).quantized_representation
+        ).audio_embeddings
         loss = self.loss_fn(clean_speech_quantized, noisy_speech_quantized)
         return loss
     

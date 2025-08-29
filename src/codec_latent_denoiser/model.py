@@ -30,7 +30,7 @@ class MLPDenoiser(nn.Module):
 
 @dataclass
 class CodecLatentDenoiserOutput(ModelOutput):
-    quantized_representation: torch.Tensor = None
+    audio_embeddings: torch.Tensor = None
     audio_generated: Optional[torch.Tensor] = None
 
 
@@ -53,21 +53,19 @@ class CodecLatentDenoiser(PreTrainedModel):
         denoise: bool = True,
         decode: bool = False,
     ) -> torch.Tensor:
-        audio_embeddings = self.codec.encode(x).quantized_representation  # [B, D, T]
+        audio_embeddings = self.codec.encode(x).audio_embeddings  # [B, D, T]
         if denoise:
             audio_embeddings = audio_embeddings.transpose(1, 2)  # [B, T, D]
             audio_embeddings = self.denoiser(audio_embeddings)  # [B, T, D]
-            quantized_representation = audio_embeddings.transpose(1, 2)  # [B, D, T]
-        else:
-            quantized_representation = audio_embeddings  # [B, D, T]
+            audio_embeddings = audio_embeddings.transpose(1, 2)  # [B, D, T]
 
         output = CodecLatentDenoiserOutput(
-            quantized_representation=quantized_representation
+            audio_embeddings=audio_embeddings
         )
 
         if decode:
             audio_generated = self.codec.decode(
-                quantized_representation=quantized_representation
+                quantized_representation=audio_embeddings
             ).audio_values
             output.audio_generated = audio_generated
 
