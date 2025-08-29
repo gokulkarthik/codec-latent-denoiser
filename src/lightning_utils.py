@@ -7,6 +7,7 @@ from lightning.pytorch.callbacks import Callback
 from torch.utils.data import DataLoader, Dataset
 from torchmetrics.audio import PerceptualEvaluationSpeechQuality, DeepNoiseSuppressionMeanOpinionScore, NonIntrusiveSpeechQualityAssessment
 from transformers import get_scheduler, DacConfig, DacModel
+from typing import Literal
 
 from codec_latent_denoiser import (
     CodecLatentDenoiser,
@@ -22,19 +23,22 @@ class CodecLatentDenoiserLightningModule(L.LightningModule):
     def __init__(
         self,
         pretrained_codec_path: str,
+        denoiser_type: Literal["mlp", "llama"] = "mlp",
         learning_rate: float = 1e-3,
         weight_decay: float = 1e-5,
         train_only_denoiser: bool = True,
     ) -> None:
         super().__init__()
         self.pretrained_codec_path = pretrained_codec_path
+        self.denoiser_type = denoiser_type
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
         self.train_only_denoiser = train_only_denoiser
 
         codec_config = DacConfig.from_pretrained(pretrained_codec_path)
         sampling_rate = codec_config.sampling_rate
-        self.model_config = CodecLatentDenoiserConfig(codec_config=codec_config)
+        self.model_config = CodecLatentDenoiserConfig(codec_config=codec_config,
+                                                      denoiser_type=denoiser_type)
         self.model = CodecLatentDenoiser(self.model_config)
         print(f"Loading codec from {pretrained_codec_path}...")
         self.model.codec = DacModel.from_pretrained(pretrained_codec_path)
@@ -313,14 +317,15 @@ class HuggingFaceHubPushCallback(Callback):
         is_interval_epoch = (trainer.current_epoch + 1) % self.push_every_n_epochs == 0
 
         if is_final_epoch or is_interval_epoch:
-            pl_module.model.push_to_hub(
-                repo_id=self.repo_id,
-                private=True,
-                commit_message=f"Epoch {trainer.current_epoch + 1}",
-            )
             if self.processor:
                 self.processor.push_to_hub(
                     repo_id=self.repo_id,
                     private=True,
                     commit_message="Add processor",
                 )
+            pl_module.model.push_to_hub(
+                repo_id=self.repo_id,
+                private=True,
+                commit_message=f"Epoch {trainer.current_epoch + 1}",
+            )
+            

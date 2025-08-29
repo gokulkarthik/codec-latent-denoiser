@@ -1,0 +1,12 @@
+pretrained_codec_path: "descript/dac_16khz"
+denoiser_type: "llama"
+data_path_hf_hub: "JacobLinCool/VoiceBank-DEMAND-16k"
+
+batch_size: 16
+devices: [0, 1, 2, 3]
+learning_rate: 5e-4
+
+hf_hub_entity: "gokulkarthik"
+log_every_n_steps: 50
+val_check_interval: 1.0
+max_epochs: 10

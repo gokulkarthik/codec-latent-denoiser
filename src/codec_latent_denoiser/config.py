@@ -9,7 +9,7 @@ class CodecLatentDenoiserConfig(PretrainedConfig):
     def __init__(
         self,
         codec_config: DacConfig = DacConfig(),
-        denoiser_type: Literal["mlp"] = "mlp",
+        denoiser_type: Literal["mlp", "llama"] = "mlp",
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)

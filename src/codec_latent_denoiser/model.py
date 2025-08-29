@@ -2,8 +2,9 @@ import torch
 import torch.nn as nn
 
 from dataclasses import dataclass
-from transformers import PreTrainedModel, DacModel, DacConfig
+from transformers import PreTrainedModel, DacModel, DacConfig, LlamaConfig, LlamaModel
 from transformers.utils import ModelOutput
+
 from typing import Optional
 
 from codec_latent_denoiser.config import CodecLatentDenoiserConfig
@@ -16,18 +17,49 @@ class MLPDenoiser(nn.Module):
         super().__init__()
         self.config = config
         self.hidden_size = config.codec_config.hidden_size
-        self.layer1 = nn.Linear(self.hidden_size, self.hidden_size * 2, bias=False)
-        self.layer2 = nn.Linear(self.hidden_size * 2, self.hidden_size, bias=False)
-        self.layer_norm = nn.LayerNorm(self.hidden_size, bias=False)
+        self.layer1 = nn.Linear(self.hidden_size, self.hidden_size * 4, bias=True)
+        self.layer2 = nn.Linear(self.hidden_size * 4, self.hidden_size * 4, bias=True)
+        self.layer3 = nn.Linear(self.hidden_size * 4, self.hidden_size, bias=True)
         self.activation = nn.GELU()
-        self.dropout = nn.Dropout(0.05)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass through the MLP denoiser."""
-        x_before = x
-        x = self.layer_norm(x)
-        x = self.dropout(self.activation(self.layer1(x)))
-        x = self.layer2(x) + x_before
+        x = self.activation(self.layer1(x))
+        x = self.activation(self.layer2(x))
+        x = self.layer3(x)
+        return x
+
+
+class LLaMADenoiser(nn.Module):
+    """LLaMA architecture based denoiser for codec latent space."""
+
+    def __init__(self, config: CodecLatentDenoiserConfig) -> None:
+        super().__init__()
+        self.config = config
+        self.hidden_size = config.codec_config.hidden_size
+        denoiser_config = LlamaConfig(
+            hidden_size=self.hidden_size,
+            num_hidden_layers=2,
+            num_attention_heads=4,
+            intermediate_size=self.hidden_size * 4,
+            max_position_embeddings=2048,
+            rope_theta=10000.0,
+            rms_norm_eps=1e-5,
+            tie_word_embeddings=False,
+            vocab_size=32,
+            hidden_dropout=0.0,
+            attention_dropout=0.0,
+            use_cache=False,
+        )
+        self.backbone = LlamaModel(denoiser_config)
+        self.out = nn.Linear(self.hidden_size, self.hidden_size)
+        
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass through the LLaMA denoiser."""
+        x_original = x
+        x = self.backbone(inputs_embeds=x).last_hidden_state
+        x = self.out(x)
+        x = x + x_original
         return x
 
 
@@ -50,6 +82,8 @@ class CodecLatentDenoiser(PreTrainedModel):
         self.codec = DacModel(self.config.codec_config)
         if self.config.denoiser_type == "mlp":
             self.denoiser = MLPDenoiser(self.config)
+        elif self.config.denoiser_type == "llama":
+            self.denoiser = LLaMADenoiser(self.config)
         else:
             raise ValueError(f"Invalid denoiser type: {self.config.denoiser_type}")
 

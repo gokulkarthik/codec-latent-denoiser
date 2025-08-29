@@ -26,7 +26,7 @@ def load_model_and_dataset(
     with st.spinner("Loading model and dataset..."):
         processor = CodecLatentDenoiserProcessor.from_pretrained(model_path)
         model = CodecLatentDenoiser.from_pretrained(model_path).eval()
-        ds = load_dataset(data_path, num_proc=32)["train"]
+        ds = load_dataset(data_path, num_proc=32)["test"]
 
     return processor, model, ds
 
@@ -63,28 +63,36 @@ def compute_score(
 def main():
     """Main demo application."""
     # Model and dataset paths
-    model_path = "gokulkarthik/codec-latent-denoiser-default"
+    model_path = "gokulkarthik/codec-latent-denoiser-e2"
     data_path = "JacobLinCool/VoiceBank-DEMAND-16k"
 
     # Load model and dataset
     processor, model, ds = load_model_and_dataset(model_path, data_path)
     sampling_rate = 16000
 
-    st.success(f"✅ Model ({model_path}) and dataset ({data_path}) loaded successfully!")
+    st.success(f"✅ Model ({model_path}) and dataset ({data_path}[test]) loaded successfully!")
 
     # Sample selection
     st.header("📊 Sample Selection")
     max_samples = len(ds)
+    
+    # Initialize sample index in session state
+    if "sample_idx" not in st.session_state:
+        st.session_state.sample_idx = random.randint(0, max_samples - 1)
+    
     sample_idx = st.slider(
-        "Select sample index", 0, max_samples - 1, value=random.randint(0, max_samples - 1)
+        "Select sample index", 0, max_samples - 1, value=st.session_state.sample_idx
     )
+    
+    # Update session state when slider changes
+    st.session_state.sample_idx = sample_idx
 
     if st.button("🎲 Random Sample"):
-        sample_idx = random.randint(0, max_samples - 1)
+        st.session_state.sample_idx = random.randint(0, max_samples - 1)
         st.rerun()
 
     # Load sample
-    sample = ds[sample_idx]
+    sample = ds[st.session_state.sample_idx]
     clean = torch.from_numpy(sample['clean']['array'])
     noisy = torch.from_numpy(sample['noisy']['array'])
 
@@ -169,9 +177,9 @@ def main():
             ]
         }
         comparison_df = pd.DataFrame(comparison_data).set_index("Metric")
-        comparison_df['Denoiser Improvement %'] = (
+        comparison_df['Denoiser Difference'] = (
             comparison_df['Generated With Denoiser'] - comparison_df['Generated Without Denoiser']
-        ) * 100 / comparison_df['Generated Without Denoiser']
+        )
         st.dataframe(comparison_df)
 
 
