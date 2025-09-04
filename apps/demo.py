@@ -63,8 +63,8 @@ def compute_score(
 def main():
     """Main demo application."""
     # Model and dataset paths
-    model_path = "gokulkarthik/codec-latent-denoiser-e2"
-    data_path = "JacobLinCool/VoiceBank-DEMAND-16k"
+    model_path = "gokulkarthik/codec-latent-denoiser-e3"
+    data_path = "gokulkarthik/vb-demand-synthetic"
 
     # Load model and dataset
     processor, model, ds = load_model_and_dataset(model_path, data_path)
