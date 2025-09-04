@@ -1,6 +1,6 @@
 # Codec Latent Denoiser
 
-This project explores speech enhancement in the latent space of neural audio codecs (DAC) by training a denoiser neural network on continuous quantized representations, inspired by the work ["Efficient Speech Enhancement via Embeddings from Pre-trained Generative Audioencoders"](https://arxiv.org/pdf/2506.11514). Instead of processing raw audio signals, this method works with the compressed representations, offering potential efficiency gains while maintaining high-quality denoising performance.
+This project explores speech enhancement in the latent space of neural audio codecs (DAC) by training a denoiser neural network on continuous quantized representations, inspired by the work ["Efficient Speech Enhancement via Embeddings from Pre-trained Generative Audioencoders"](https://arxiv.org/pdf/2506.11514). Instead of processing raw audio signals, this method works with the compressed representations, offering potential efficiency gains while maintaining high-quality speech enhancement performance.
 
 ## Project Structure
 
@@ -38,21 +38,21 @@ Copy `.env.example` as `.env` and fill in the required values.
 To train the model:
 
 ```bash
-poetry run python src/train.py --config-name=e2
+poetry run python src/train.py --config-name=e3
 ```
 
 Configure the hyperparameters in [`src/train_configs/`](./src/train_configs/) directory.
 
-### Speech Denoising
+### TTS Output Enhancement
 
-The primary use case is removing noise from speech audio. Here's how to use the [model](https://huggingface.co/gokulkarthik/codec-latent-denoiser-e2) for denoising that was trained with the [`e2` config](./src/train_configs/e2.yaml):
+The primary use case is enhancing the TTS output by removing common artifacts. Here's how to use the [model](https://huggingface.co/gokulkarthik/codec-latent-denoiser-e3) for denoising that was trained with the [e3 config](./src/train_configs/e3.yaml):
 
 ```python
 import torch
 from codec_latent_denoiser import CodecLatentDenoiser, CodecLatentDenoiserProcessor
 
 # Set model checkpoint path
-model_path = "gokulkarthik/codec-latent-denoiser-e2"
+model_path = "gokulkarthik/codec-latent-denoiser-e3"
 
 # Load model and processor
 processor = CodecLatentDenoiserProcessor.from_pretrained(model_path)
